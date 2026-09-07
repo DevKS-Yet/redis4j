@@ -4,19 +4,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
- * 클라이언트 요청을 RESP2로 디코딩한다.
- * 요청은 Bulk String 배열(redis-cli)이며, {@code *} 로 시작하지 않으면 inline 명령(공백 분리)으로 처리한다.
+ * 클라이언트 요청을 RESP2로 디코딩한다. 인자는 <b>바이트 안전</b>하게 {@code byte[]} 로 반환한다
+ * (값이 임의 바이트일 수 있으므로). 명령명·키는 상위 계층이 필요 시 UTF-8로 디코딩한다.
+ * {@code *} 로 시작하지 않으면 inline 명령(공백 분리)으로 처리한다.
  */
 public final class RespDecoder {
 
     private RespDecoder() {}
 
-    /** 명령 하나를 인자 리스트로 읽는다. 연결 종료(EOF)면 {@code null}. 프로토콜 위반이면 {@link ProtocolException}. */
-    public static List<String> readCommand(InputStream in) throws IOException {
+    /** 명령 하나를 인자(byte[]) 리스트로 읽는다. 연결 종료(EOF)면 {@code null}. 위반이면 {@link ProtocolException}. */
+    public static List<byte[]> readCommand(InputStream in) throws IOException {
         int first = in.read();
         if (first == -1) {
             return null;                                   // EOF
@@ -26,7 +26,7 @@ public final class RespDecoder {
             if (count <= 0) {
                 return List.of();
             }
-            List<String> args = new ArrayList<>(count);
+            List<byte[]> args = new ArrayList<>(count);
             for (int i = 0; i < count; i++) {
                 int type = in.read();
                 if (type != '$') {
@@ -44,18 +44,22 @@ public final class RespDecoder {
                 }
                 in.read();                                 // trailing CR
                 in.read();                                 // trailing LF
-                args.add(new String(buf, StandardCharsets.UTF_8));
+                args.add(buf);
             }
             return args;
         }
-        // inline 명령
+        // inline 명령 (공백 분리, 텍스트로 취급)
         String rest = readLine(in);
         String line = ((char) first) + (rest == null ? "" : rest);
         String trimmed = line.strip();
         if (trimmed.isEmpty()) {
             return List.of();
         }
-        return Arrays.asList(trimmed.split("\\s+"));
+        List<byte[]> args = new ArrayList<>();
+        for (String token : trimmed.split("\\s+")) {
+            args.add(token.getBytes(StandardCharsets.UTF_8));
+        }
+        return args;
     }
 
     private static int parseInt(String s) {

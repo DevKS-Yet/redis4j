@@ -1,6 +1,7 @@
 package redis4j.server;
 
 import redis4j.command.CommandDispatcher;
+import redis4j.store.Database;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -16,7 +17,8 @@ import java.util.concurrent.Executors;
 public final class RedisServer implements AutoCloseable {
 
     private final int port;
-    private final CommandDispatcher dispatcher = new CommandDispatcher();
+    private final Database database = new Database();
+    private final CommandDispatcher dispatcher = new CommandDispatcher(database);
     private final ExecutorService connections = Executors.newVirtualThreadPerTaskExecutor();
 
     private volatile boolean running;
@@ -25,6 +27,11 @@ public final class RedisServer implements AutoCloseable {
 
     public RedisServer(int port) {
         this.port = port;
+    }
+
+    /** 이 서버의 키 공간(테스트·검증에서 상태 주입/확인용). */
+    public Database database() {
+        return database;
     }
 
     /** 소켓을 바인딩하고 accept 루프를 시작한 뒤, 실제 리슨 포트를 반환한다(포트 0이면 임의 포트). */

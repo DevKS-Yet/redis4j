@@ -1,0 +1,34 @@
+verify-str: redis4j on port 16219
+PASS ① SET foo bar -> +OK
+PASS ① GET foo -> bar
+PASS ② SET n 10 -> +OK
+PASS ② INCR n -> :11
+PASS   DECRBY n 5 -> :6
+PASS   SET s abc; INCR s -> NOT_INT
+PASS   INCR s -> -ERR not integer
+PASS ③ GET(list key) -> -WRONGTYPE
+PASS ③ TYPE mylist -> +list
+PASS ④ SET k v PX 100 -> +OK
+PASS ④ GET k (즉시) -> v
+PASS ④ GET k (만료 후) -> nil
+PASS APPEND a Hello -> :5
+PASS APPEND a ' World' -> :11
+PASS GET a -> 'Hello World'
+PASS STRLEN a -> :11
+PASS GETSET g v1 (없음) -> nil
+PASS GETSET g v2 -> v1
+PASS SETNX sx a -> :1
+PASS SETNX sx b -> :0
+PASS MSET x 1 y 2 -> +OK
+PASS MGET x y nope -> [1,2,nil]
+PASS TYPE foo -> +string
+PASS TYPE nope -> +none
+PASS DEL x y -> :2
+PASS EXISTS x foo -> :1
+PASS SET b 'a\nb' -> +OK
+PASS GET b -> 'a\nb' (3 bytes)
+PASS 동시 INCR 50회 각각 정수 응답
+PASS 최종 GET c -> :50? (실제 GET)
+---
+PASS=30 FAIL=0
+ALL PASS

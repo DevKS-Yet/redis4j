@@ -33,7 +33,7 @@ final class ConnectionHandler implements Runnable {
              OutputStream out = new BufferedOutputStream(s.getOutputStream())) {
 
             while (true) {
-                List<String> args;
+                List<byte[]> args;
                 try {
                     args = RespDecoder.readCommand(in);
                 } catch (ProtocolException pe) {

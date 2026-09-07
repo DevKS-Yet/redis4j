@@ -8,6 +8,11 @@ Java 21로 밑바닥부터 구현하는 Redis 클론. 요구사항 정본은 저
 - **REQ-NET-FUNC-01** — RESP2 프로토콜 TCP 서버 기반 (완료·검증)
   - RESP2 인코더/디코더, Virtual Threads 기반 다중 접속, 명령 디스패처
   - 지원 명령: `PING` · `ECHO` · `COMMAND`(최소) · `QUIT`
+- **REQ-STR-FUNC-01** — String 자료형 + 중앙 키 저장소 (완료·검증)
+  - 중앙 키 공간(딕셔너리, lazy 만료), 바이트 안전 값, 명령 단위 원자 실행
+  - 지원 명령: `SET`(NX/XX/EX/PX/EXAT/PXAT/KEEPTTL/GET) · `GET` · `GETSET` · `GETDEL` ·
+    `APPEND` · `STRLEN` · `SETNX` · `MSET` · `MSETNX` · `MGET` ·
+    `INCR` · `DECR` · `INCRBY` · `DECRBY` · `INCRBYFLOAT` · `DEL` · `EXISTS` · `TYPE`
 
 ## 기술 스택
 

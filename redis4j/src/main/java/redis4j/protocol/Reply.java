@@ -32,4 +32,5 @@ public sealed interface Reply
     static Reply pong() { return new Simple("PONG"); }
     static Reply error(String message) { return new Error(message); }
     static Reply bulk(String value) { return new Bulk(value.getBytes(StandardCharsets.UTF_8)); }
+    static Reply bulk(byte[] value) { return new Bulk(value); }
 }
