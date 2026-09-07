@@ -1,0 +1,28 @@
+verify-exp: redis4j on port 37693
+PASS ① SET k v -> +OK
+PASS ① PEXPIRE k 100 -> :1
+PASS ① GET k (즉시) -> v
+PASS ① GET k (만료 후) -> nil
+PASS ② TTL absent -> -2
+PASS   SET p v -> +OK
+PASS ② TTL p (영구) -> -1
+PASS   PTTL p (영구) -> -1
+PASS   SET q v -> +OK
+PASS   EXPIRE q 100 -> :1
+PASS ③ TTL q ~100 (99~100)
+PASS ③ PERSIST q -> :1
+PASS ③ TTL q -> -1 (영구)
+PASS ③ GET q -> v (유지)
+PASS ③ PERSIST q 재차 -> :0
+PASS   SET e v EX 100 -> +OK
+PASS SET EX 100 후 TTL ~100
+PASS EXPIRE absent -> :0
+PASS   SET z v -> +OK
+PASS PEXPIREAT z 1(과거) -> :1
+PASS   GET z (과거만료) -> nil
+PASS ④ 200키 저장 확인 (rawSize 0->200)
+PASS ④ 미접근 상태로 능동 만료됨 (rawSize 200->0)
+PASS ④ 만료 처리 중 PING 정상
+---
+PASS=24 FAIL=0
+ALL PASS

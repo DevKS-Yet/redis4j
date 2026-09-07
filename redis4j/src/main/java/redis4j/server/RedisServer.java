@@ -9,6 +9,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * RESP2 TCP 서버. accept 루프는 전용(non-daemon) 플랫폼 스레드에서 돌고,
@@ -20,6 +22,12 @@ public final class RedisServer implements AutoCloseable {
     private final Database database = new Database();
     private final CommandDispatcher dispatcher = new CommandDispatcher(database);
     private final ExecutorService connections = Executors.newVirtualThreadPerTaskExecutor();
+    private final ScheduledExecutorService expiryScheduler =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "redis4j-expiry");
+                t.setDaemon(true);
+                return t;
+            });
 
     private volatile boolean running;
     private ServerSocket serverSocket;
@@ -42,6 +50,7 @@ public final class RedisServer implements AutoCloseable {
         running = true;
         int bound = serverSocket.getLocalPort();
         acceptThread = Thread.ofPlatform().name("redis4j-accept").start(this::acceptLoop);
+        expiryScheduler.scheduleAtFixedRate(this::activeExpire, 100, 100, TimeUnit.MILLISECONDS);
         return bound;
     }
 
@@ -60,7 +69,14 @@ public final class RedisServer implements AutoCloseable {
         }
     }
 
-    /** 리슨 소켓과 연결 스레드를 정리한다(graceful shutdown). */
+    /** 능동 만료 한 사이클(사이클당 최대 100개 검사 — 부하 제한). */
+    private void activeExpire() {
+        synchronized (database) {
+            database.activeExpireCycle(100);
+        }
+    }
+
+    /** 리슨 소켓·연결 스레드·만료 스케줄러를 정리한다(graceful shutdown). */
     @Override
     public void close() {
         running = false;
@@ -72,5 +88,6 @@ public final class RedisServer implements AutoCloseable {
             // 무시
         }
         connections.shutdownNow();
+        expiryScheduler.shutdownNow();
     }
 }

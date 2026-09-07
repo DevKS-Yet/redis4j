@@ -48,7 +48,7 @@ public final class StringCommands {
             case "DEL" -> del(a);
             case "EXISTS" -> exists(a);
             case "TYPE" -> type(a);
-            default -> Reply.error("ERR unknown command '" + str(a.get(0)) + "'");
+            default -> null;                                 // 미처리 → 디스패처가 다음 핸들러로
         };
     }
 

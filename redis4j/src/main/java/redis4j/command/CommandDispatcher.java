@@ -10,17 +10,22 @@ import java.util.Locale;
 
 /**
  * 명령명을 처리기로 라우팅한다. 연결 수준 명령(PING/ECHO/COMMAND/QUIT)은 직접 처리하고,
- * 데이터 명령은 {@code synchronized(db)} 로 직렬화해 {@link StringCommands} 에 위임한다
+ * 데이터 명령은 {@code synchronized(db)} 로 직렬화해 자료형별 핸들러에 위임한다
  * (명령 단위 원자성 — Redis 단일 스레드 실행 모델). 인자는 바이트 안전한 {@code byte[]}.
+ *
+ * <p>데이터 명령은 각 핸들러가 미처리 시 null 을 반환하고, 순서대로 시도한 뒤 모두 null 이면
+ * unknown-command 에러를 낸다.
  */
 public final class CommandDispatcher {
 
     private final Database db;
     private final StringCommands strings;
+    private final ExpireCommands expire;
 
     public CommandDispatcher(Database db) {
         this.db = db;
         this.strings = new StringCommands(db);
+        this.expire = new ExpireCommands(db);
     }
 
     public Reply dispatch(List<byte[]> args, ConnectionState state) {
@@ -41,7 +46,15 @@ public final class CommandDispatcher {
                 return Reply.ok();
             default:
                 synchronized (db) {
-                    return strings.execute(name, args);
+                    Reply r = strings.execute(name, args);
+                    if (r == null) {
+                        r = expire.execute(name, args);
+                    }
+                    if (r == null) {
+                        r = Reply.error("ERR unknown command '"
+                                + new String(args.get(0), StandardCharsets.UTF_8) + "'");
+                    }
+                    return r;
                 }
         }
     }

@@ -60,6 +60,72 @@ public final class Database {
         return o == null ? null : o.type();
     }
 
+    /** 존재하는(비만료) 키의 만료 시각(절대 ms, 0=만료 없음)을 설정. 키 없으면 false. 값은 유지. */
+    public boolean setExpireAt(String key, long expireAtMillis) {
+        if (get(key) == null) {
+            return false;
+        }
+        Entry e = map.get(key);
+        map.put(key, new Entry(e.value(), expireAtMillis));
+        return true;
+    }
+
+    /** 남은 수명(ms). 없는 키 -2, 만료 없음 -1. */
+    public long ttlMillis(String key) {
+        Entry e = map.get(key);
+        if (e == null) {
+            return -2;
+        }
+        if (isExpired(e)) {
+            map.remove(key);
+            return -2;
+        }
+        if (e.expireAtMillis() == 0) {
+            return -1;
+        }
+        return e.expireAtMillis() - System.currentTimeMillis();
+    }
+
+    /** 만료 제거. 만료가 설정돼 있던 키였으면 true. */
+    public boolean persist(String key) {
+        if (get(key) == null) {
+            return false;
+        }
+        Entry e = map.get(key);
+        if (e.expireAtMillis() == 0) {
+            return false;
+        }
+        map.put(key, new Entry(e.value(), 0L));
+        return true;
+    }
+
+    /**
+     * 능동 만료 한 사이클. 만료 후보(만료 설정된 키)를 최대 {@code maxExamine} 개만 검사하고
+     * 만료된 것을 제거한다(사이클당 작업량 제한). 제거 수 반환. 호출자가 synchronized(db) 로 감싼다.
+     */
+    public int activeExpireCycle(int maxExamine) {
+        long now = System.currentTimeMillis();
+        int examined = 0;
+        int removed = 0;
+        java.util.Iterator<Map.Entry<String, Entry>> it = map.entrySet().iterator();
+        while (it.hasNext() && examined < maxExamine) {
+            Entry v = it.next().getValue();
+            if (v.expireAtMillis() != 0) {
+                examined++;
+                if (now >= v.expireAtMillis()) {
+                    it.remove();
+                    removed++;
+                }
+            }
+        }
+        return removed;
+    }
+
+    /** 만료 정리 없이 현재 맵 크기(검증·디버깅용). */
+    public int rawSize() {
+        return map.size();
+    }
+
     private boolean isExpired(Entry e) {
         return e.expireAtMillis() != 0 && System.currentTimeMillis() >= e.expireAtMillis();
     }

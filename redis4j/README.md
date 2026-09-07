@@ -13,6 +13,9 @@ Java 21로 밑바닥부터 구현하는 Redis 클론. 요구사항 정본은 저
   - 지원 명령: `SET`(NX/XX/EX/PX/EXAT/PXAT/KEEPTTL/GET) · `GET` · `GETSET` · `GETDEL` ·
     `APPEND` · `STRLEN` · `SETNX` · `MSET` · `MSETNX` · `MGET` ·
     `INCR` · `DECR` · `INCRBY` · `DECRBY` · `INCRBYFLOAT` · `DEL` · `EXISTS` · `TYPE`
+- **REQ-EXP-FUNC-01** — 키 만료(TTL) 서브시스템 (완료·검증)
+  - 수동(lazy) + 능동(데몬 스케줄러, 사이클당 상한) 만료
+  - 지원 명령: `EXPIRE` · `PEXPIRE` · `EXPIREAT` · `PEXPIREAT` · `TTL` · `PTTL` · `PERSIST`
 
 ## 기술 스택
 
