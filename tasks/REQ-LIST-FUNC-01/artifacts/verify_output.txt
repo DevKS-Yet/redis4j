@@ -1,0 +1,40 @@
+verify-list: redis4j on port 39488
+PASS ① RPUSH l a b c -> :3
+PASS ① LRANGE l 0 -1 -> [a,b,c]
+PASS ② LPOP l -> a
+PASS ② LLEN l -> :2
+PASS ③ RPOP l -> c
+PASS ③ RPOP l -> b
+PASS ③ EXISTS l -> :0
+PASS   SET s v -> +OK
+PASS ④ LPUSH(string key) -> WRONGTYPE
+PASS STR③ 종단: GET(list key) -> WRONGTYPE
+PASS LPUSH m a b c -> :3
+PASS LRANGE m 0 -1 -> [c,b,a]
+PASS LINDEX m 0 -> c
+PASS LINDEX m -1 -> a
+PASS LINDEX m 5 -> nil
+PASS LSET m 0 X -> +OK
+PASS LINDEX m 0 -> X
+PASS RPUSH r a b a c a -> :5
+PASS LREM r 2 a -> :2
+PASS LRANGE r 0 -1 -> [b,c,a]
+PASS LREM r -1 a -> :1
+PASS LRANGE r 0 -1 -> [b,c]
+PASS LTRIM t 1 3 -> +OK
+PASS LRANGE t 0 -1 -> [b,c,d]
+PASS LINSERT i BEFORE c b -> :3
+PASS LRANGE i 0 -1 -> [a,b,c]
+PASS LINSERT i AFTER c d -> :4
+PASS LINSERT i BEFORE zzz x -> :-1
+PASS LPUSHX x a (없음) -> :0
+PASS RPUSH x a -> :1
+PASS RPUSHX x b -> :2
+PASS LRANGE x 0 -1 -> [a,b]
+PASS LPOP cc 2 -> [a,b]
+PASS LRANGE cc 0 -1 -> [c,d]
+PASS LLEN absent -> :0
+PASS LLEN(string key) -> WRONGTYPE
+---
+PASS=36 FAIL=0
+ALL PASS
