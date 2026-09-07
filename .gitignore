@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs / temp
+*.log
+*.tmp
+
+# 설치 실행파일 — 서드파티 배포본, 저장소에 담지 않음 (GitHub 100MB 제한)
+*.exe
+
+# 런타임 캐시 — 로컬 경로·UUID 포함, git 추적 안 함
+cache/
+
+# Module 시스템 제외
+/Java-Service-Tree-Framework-AI/
+/Java-Service-Tree-Framework-Auto-Code/
+/Java-Service-Tree-Framework-Backend-Core/
+/Java-Service-Tree-Framework-Broker-Hub/
+/Java-Service-Tree-Framework-Engine-Fire/
+/Java-Service-Tree-Framework-Frontend-Web/
+/Java-Service-Tree-Framework-Global-Config/
+/Java-Service-Tree-Framework-IaC-System/
+/Java-Service-Tree-Framework-Middle-Proxy/
