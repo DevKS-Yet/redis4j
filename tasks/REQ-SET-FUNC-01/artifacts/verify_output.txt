@@ -1,0 +1,34 @@
+verify-set: redis4j on port 1879
+PASS ① SADD s a b a -> :2
+PASS ① SCARD s -> :2
+PASS ② SISMEMBER s a -> :1
+PASS ② SISMEMBER s z -> :0
+PASS SMISMEMBER s a z -> [1,0]
+PASS SMEMBERS s -> {a,b}
+PASS ③ SINTER s1 s2 -> {b,c}
+PASS SUNION s1 s2 -> {a,b,c,d}
+PASS SDIFF s1 s2 -> {a}
+PASS SINTERSTORE d s1 s2 -> :2
+PASS SMEMBERS d -> {b,c}
+PASS TYPE d -> +set
+PASS SDIFFSTORE d2 s2 s1 s2 -> :0(공집합)
+PASS EXISTS d2 -> :0 (공집합이라 미생성)
+PASS ④ SREM s a b -> :2
+PASS ④ EXISTS s -> :0
+PASS SPOP sp -> {x|y|z} 중 하나
+PASS SPOP 후 SCARD sp -> :2
+PASS SPOP sp 5 -> 남은 2개
+PASS SPOP 전부 후 EXISTS sp -> :0
+PASS SRANDMEMBER sr -> 원소 하나
+PASS SRANDMEMBER sr 2 -> 서로 다른 2개
+PASS SRANDMEMBER sr -5 -> 5개(중복 허용)
+PASS SRANDMEMBER 비파괴: SCARD sr -> :3
+PASS SMOVE ma mb x -> :1
+PASS SISMEMBER mb x -> :1
+PASS SISMEMBER ma x -> :0
+PASS SMOVE ma mb nope -> :0
+PASS SADD(string key) -> WRONGTYPE
+PASS GET(set key) -> WRONGTYPE
+---
+PASS=30 FAIL=0
+ALL PASS

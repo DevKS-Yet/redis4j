@@ -24,6 +24,10 @@ Java 21로 밑바닥부터 구현하는 Redis 클론. 요구사항 정본은 저
   - `LinkedHashMap<String,byte[]>` 기반(삽입순서 보존), 빈 해시 자동 삭제
   - 지원 명령: `HSET` · `HMSET` · `HSETNX` · `HGET` · `HMGET` · `HGETALL` · `HDEL` ·
     `HEXISTS` · `HLEN` · `HKEYS` · `HVALS` · `HSTRLEN` · `HINCRBY` · `HINCRBYFLOAT`
+- **REQ-SET-FUNC-01** — Set 자료형 (완료·검증)
+  - `LinkedHashSet<String>` 기반(원소 순서 비보장), 빈 집합 자동 삭제
+  - 지원 명령: `SADD` · `SREM` · `SMEMBERS` · `SISMEMBER` · `SMISMEMBER` · `SCARD` ·
+    `SPOP` · `SRANDMEMBER` · `SINTER`/`SUNION`/`SDIFF`(+`STORE`) · `SMOVE`
 
 ## 기술 스택
 
