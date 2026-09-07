@@ -1,0 +1,6 @@
+# Gradle
+/.gradle/
+/build/
+
+# 로컬 검증 산출물 (javac 직접 컴파일)
+/out/

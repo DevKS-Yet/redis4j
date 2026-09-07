@@ -1,0 +1,40 @@
+# redis4j
+
+Java 21로 밑바닥부터 구현하는 Redis 클론. 요구사항 정본은 저장소 루트
+`요구사항정의서_엑셀양식_v3_1_3.xlsx`(`요구사항정의서` 시트).
+
+## 현재 단계
+
+- **REQ-NET-FUNC-01** — RESP2 프로토콜 TCP 서버 기반 (완료·검증)
+  - RESP2 인코더/디코더, Virtual Threads 기반 다중 접속, 명령 디스패처
+  - 지원 명령: `PING` · `ECHO` · `COMMAND`(최소) · `QUIT`
+
+## 기술 스택
+
+- Java 21 (LTS) · Virtual Threads (thread-per-connection, 블로킹 소켓)
+- Gradle (Kotlin DSL) · 외부 네트워크 프레임워크 미사용(표준 라이브러리)
+
+## 실행
+
+```bash
+# Gradle (IDE 임포트 시 래퍼 자동 생성, 또는 `gradle wrapper`)
+gradle run                 # 기본 포트 6379
+gradle run --args="7000"   # 포트 지정
+
+# 또는 JDK 직접
+javac -d out $(find src/main/java -name '*.java')
+java -cp out redis4j.Main 6379
+```
+
+접속 확인:
+
+```bash
+redis-cli -p 6379 ping     # → PONG
+redis-cli -p 6379 echo hi  # → "hi"
+```
+
+## 테스트
+
+```bash
+gradle test    # JUnit 통합 테스트 (src/test/java)
+```

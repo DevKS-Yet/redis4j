@@ -1,0 +1,11 @@
+verify: redis4j on port 20392
+PASS ① PING -> +PONG
+PASS ③ ECHO hi -> $2 hi
+PASS ④ unknown -> -ERR unknown command
+PASS ④ 연결 유지 후 PING
+PASS ② 동시 50 클라이언트 각각 +PONG
+PASS (부가) inline PING
+PASS (부가) PING msg -> bulk
+---
+PASS=7 FAIL=0
+ALL PASS
