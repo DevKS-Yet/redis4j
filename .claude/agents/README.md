@@ -20,17 +20,21 @@
 
 ## 2. 도메인 서브에이전트 (Worker Pool과 별개 계층)
 
-이 저장소(Java Service Tree Framework)를 **실제 개발할 때** 쓰는 도메인 특화 에이전트.
+이 저장소의 **redis4j**(Java 21로 밑바닥부터 구현하는 Redis 클론)를 **실제 개발할 때** 쓰는 도메인 특화 에이전트.
 일반 Claude Code 서브에이전트로 동작한다 — 직접 파일을 쓰고, 필요 시 가정을 명시하거나 질문한다.
 오케스트레이션 워커 규약(무통신·file-as-memory·헤드리스)을 따르지 않으며, `workers_approved`
 승인 게이트 대상도 아니다. `backends.json` 에도 등록하지 않는다.
 
 | 파일 | name | 도메인 |
 |------|------|--------|
-| `frontend-expert.md` | `frontend-expert` | vanilla JS · jQuery · Bootstrap 기반 서버렌더링 프론트엔드 |
-| `backend-expert.md` | `backend-expert` | Backend-Core(A-RMS API 서버: Spring Boot 2.6 · TreeFramework · Feign · Kafka · POI)와 Auto-Code 생성기(Telosys Velocity 템플릿) |
-| `database-expert.md` | `database-expert` | A-RMS(MySQL 8) 스키마 — Flyway 마이그레이션 · nested-set 루트 seed · `_LOG` 짝 테이블/트리거 · 제품별 동적 테이블 · 엔티티↔DDL 정합성 |
+| `server-core-expert.md` | `server-core-expert` | RESP2 인코더/디코더 · TCP 서버 · Virtual Threads 실행 엔진 · 명령 디스패처/원자적 실행 · Pub/Sub 전송 · 동시성(NFR) |
+| `datatype-command-expert.md` | `datatype-command-expert` | 중앙 키 공간 · String/List/Hash/Set/Sorted Set 명령 의미론 · 만료(TTL) · 키 공간 관리(KEYS/SCAN/SELECT) · 트랜잭션(MULTI/EXEC/WATCH) |
+| `persistence-expert.md` | `persistence-expert` | RDB 스냅샷 · AOF 로그 포맷 · 내구성(fsync) · 크래시 안전 · 재작성 · 기동 복원 |
+| `testing-qa-expert.md` | `testing-qa-expert` | JUnit 단위/통합 테스트 · redis-cli·Jedis/Lettuce 호환 스모크 · Gradle/CI · 커버리지 · 벤치마크 · 단계별 DoD 자동화 |
 
 **이 계층에 에이전트를 추가하려면** 이 표에 한 줄 추가하고 `.claude/agents/<name>.md` 를 둔다.
 정본 5개(Worker Pool 문서)는 건드리지 않는다.
+
+> 이전 A-RMS 전용 도메인 에이전트(`frontend-expert` · `backend-expert` · `database-expert`)는
+> redis4j 재구성 시 제거했다(git 이력에 보존). A-RMS 작업 재개 시 이력에서 복원한다.
 
