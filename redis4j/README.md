@@ -20,6 +20,10 @@ Java 21로 밑바닥부터 구현하는 Redis 클론. 요구사항 정본은 저
   - `LinkedList<byte[]>` 기반 양방향, 빈 리스트 자동 삭제
   - 지원 명령: `LPUSH` · `RPUSH` · `LPUSHX` · `RPUSHX` · `LPOP`/`RPOP`(count) ·
     `LRANGE` · `LLEN` · `LINDEX` · `LSET` · `LREM` · `LTRIM` · `LINSERT`
+- **REQ-HASH-FUNC-01** — Hash 자료형 (완료·검증)
+  - `LinkedHashMap<String,byte[]>` 기반(삽입순서 보존), 빈 해시 자동 삭제
+  - 지원 명령: `HSET` · `HMSET` · `HSETNX` · `HGET` · `HMGET` · `HGETALL` · `HDEL` ·
+    `HEXISTS` · `HLEN` · `HKEYS` · `HVALS` · `HSTRLEN` · `HINCRBY` · `HINCRBYFLOAT`
 
 ## 기술 스택
 

@@ -1,0 +1,35 @@
+verify-hash: redis4j on port 19536
+PASS ① HSET h f1 v1 f2 v2 -> :2
+PASS ① HGET h f1 -> v1
+PASS ② HGETALL h -> f1 v1 f2 v2
+PASS HSET h f1 X (갱신) -> :0
+PASS HGET h f1 -> X
+PASS HLEN h -> :2
+PASS HKEYS h -> [f1,f2]
+PASS HVALS h -> [X,v2]
+PASS HEXISTS h f1 -> :1
+PASS HEXISTS h nope -> :0
+PASS HMGET h f1 f2 nope -> [X,v2,nil]
+PASS ③ HDEL h f1 -> :1
+PASS ③ HEXISTS h f1 -> :0
+PASS HLEN h -> :1
+PASS ④ HINCRBY hc cnt 5 -> :5
+PASS HINCRBY hc cnt 3 -> :8
+PASS HINCRBY hc s 1 -> 비정수 에러
+PASS HINCRBYFLOAT hf x 1.5 -> 1.5
+PASS HINCRBYFLOAT hf x 2.5 -> 4
+PASS HSTRLEN hs f -> :5
+PASS HSTRLEN hs nope -> :0
+PASS HSETNX hn a 1 -> :1
+PASS HSETNX hn a 2 -> :0
+PASS HGET hn a -> 1
+PASS HMSET hm a 1 b 2 -> +OK
+PASS HGETALL hm -> a 1 b 2
+PASS TYPE h -> +hash
+PASS HSET(string key) -> WRONGTYPE
+PASS GET(hash key) -> WRONGTYPE
+PASS HDEL he only -> :1
+PASS EXISTS he -> :0 (자동 삭제)
+---
+PASS=31 FAIL=0
+ALL PASS

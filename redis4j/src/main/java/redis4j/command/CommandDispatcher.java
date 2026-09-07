@@ -22,12 +22,14 @@ public final class CommandDispatcher {
     private final StringCommands strings;
     private final ExpireCommands expire;
     private final ListCommands lists;
+    private final HashCommands hashes;
 
     public CommandDispatcher(Database db) {
         this.db = db;
         this.strings = new StringCommands(db);
         this.expire = new ExpireCommands(db);
         this.lists = new ListCommands(db);
+        this.hashes = new HashCommands(db);
     }
 
     public Reply dispatch(List<byte[]> args, ConnectionState state) {
@@ -54,6 +56,9 @@ public final class CommandDispatcher {
                     }
                     if (r == null) {
                         r = lists.execute(name, args);
+                    }
+                    if (r == null) {
+                        r = hashes.execute(name, args);
                     }
                     if (r == null) {
                         r = Reply.error("ERR unknown command '"
