@@ -2,6 +2,7 @@ package redis4j.server;
 
 import redis4j.command.CommandDispatcher;
 import redis4j.store.Database;
+import redis4j.store.Keyspace;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -19,8 +20,8 @@ import java.util.concurrent.TimeUnit;
 public final class RedisServer implements AutoCloseable {
 
     private final int port;
-    private final Database database = new Database();
-    private final CommandDispatcher dispatcher = new CommandDispatcher(database);
+    private final Keyspace keyspace = new Keyspace();
+    private final CommandDispatcher dispatcher = new CommandDispatcher(keyspace);
     private final ExecutorService connections = Executors.newVirtualThreadPerTaskExecutor();
     private final ScheduledExecutorService expiryScheduler =
             Executors.newSingleThreadScheduledExecutor(r -> {
@@ -37,9 +38,14 @@ public final class RedisServer implements AutoCloseable {
         this.port = port;
     }
 
-    /** 이 서버의 키 공간(테스트·검증에서 상태 주입/확인용). */
+    /** 전역 실행 락이자 다중 논리 DB 컨테이너(테스트·검증에서 락·확인용). */
+    public Keyspace keyspace() {
+        return keyspace;
+    }
+
+    /** 기본 논리 DB(0). 테스트·검증에서 상태 주입/확인용. */
     public Database database() {
-        return database;
+        return keyspace.db(0);
     }
 
     /** 소켓을 바인딩하고 accept 루프를 시작한 뒤, 실제 리슨 포트를 반환한다(포트 0이면 임의 포트). */
@@ -69,10 +75,10 @@ public final class RedisServer implements AutoCloseable {
         }
     }
 
-    /** 능동 만료 한 사이클(사이클당 최대 100개 검사 — 부하 제한). */
+    /** 능동 만료 한 사이클(DB당 최대 100개 검사 — 부하 제한). 전역 락으로 명령과 직렬화. */
     private void activeExpire() {
-        synchronized (database) {
-            database.activeExpireCycle(100);
+        synchronized (keyspace) {
+            keyspace.activeExpireCycle(100);
         }
     }
 

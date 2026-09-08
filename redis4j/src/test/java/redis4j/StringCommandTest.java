@@ -59,7 +59,7 @@ class StringCommandTest {
 
     @Test
     void wrong_type_on_non_string() throws IOException {                      // ③
-        synchronized (server.database()) {
+        synchronized (server.keyspace()) {
             server.database().put("mylist", () -> RedisType.LIST, 0L);
         }
         try (Client c = new Client(port)) {

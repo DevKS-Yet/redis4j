@@ -1,0 +1,38 @@
+verify-key: redis4j on port 5055
+PASS MSET a 1 b 2 -> +OK
+PASS ① KEYS * -> {a,b}
+PASS KEYS a -> {a}
+PASS KEYS h?llo -> {hello,hallo,hxllo}
+PASS KEYS h[ae]llo -> {hello,hallo}
+PASS KEYS h*llo -> {hello,hallo,hxllo,hllo}
+PASS ② SCAN 0 COUNT 3 전체 순회 -> {k0..k9}
+PASS SCAN MATCH k1 -> {k1}
+PASS SCAN TYPE list -> {mylist}
+PASS DBSIZE -> :11 (k0..k9 + mylist)
+PASS RANDOMKEY -> 기존 키 중 하나
+PASS RENAME src dst -> +OK
+PASS EXISTS src -> :0
+PASS GET dst -> 1
+PASS RENAME nokey x -> ERR no such key
+PASS RENAMENX p q -> :0 (q 존재)
+PASS RENAMENX p r -> :1
+PASS EXISTS p -> :0
+PASS GET r -> 1
+PASS UNLINK u1 u2 u3 -> :2
+PASS FLUSHDB -> +OK
+PASS ④ DBSIZE -> :0
+PASS SELECT 1 -> +OK
+PASS ③ GET g (db1) -> nil (격리)
+PASS DBSIZE (db1) -> :1
+PASS GET g (db1) -> v1
+PASS SELECT 0 -> +OK
+PASS GET g (db0) -> v0
+PASS DBSIZE (db0) -> :1
+PASS SWAPDB 0 1 -> +OK
+PASS GET g (db0, 교환 후) -> v1
+PASS GET g (db1, 교환 후) -> v0
+PASS SELECT 16 -> ERR out of range
+PASS SELECT x -> ERR not integer
+---
+PASS=34 FAIL=0
+ALL PASS

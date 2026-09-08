@@ -85,7 +85,7 @@ class ExpireCommandTest {
     @Test
     void active_expiration_without_access() throws Exception {                   // ④
         int baseline;
-        synchronized (server.database()) {
+        synchronized (server.keyspace()) {
             baseline = server.database().rawSize();
         }
         try (Client c = new Client(port)) {
@@ -95,7 +95,7 @@ class ExpireCommandTest {
         }
         Thread.sleep(450);                                   // 능동 사이클(100ms 주기) 여러 번
         int after;
-        synchronized (server.database()) {
+        synchronized (server.keyspace()) {
             after = server.database().rawSize();
         }
         assertEquals(baseline, after, "능동 만료가 미접근 키를 정리해야 함");

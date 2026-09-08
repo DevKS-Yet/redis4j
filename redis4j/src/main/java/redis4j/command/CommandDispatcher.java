@@ -3,6 +3,7 @@ package redis4j.command;
 import redis4j.protocol.Reply;
 import redis4j.server.ConnectionState;
 import redis4j.store.Database;
+import redis4j.store.Keyspace;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -10,30 +11,45 @@ import java.util.Locale;
 
 /**
  * 명령명을 처리기로 라우팅한다. 연결 수준 명령(PING/ECHO/COMMAND/QUIT)은 직접 처리하고,
- * 데이터 명령은 {@code synchronized(db)} 로 직렬화해 자료형별 핸들러에 위임한다
+ * 데이터 명령은 {@code synchronized(keyspace)} 로 직렬화해 자료형별 핸들러에 위임한다
  * (명령 단위 원자성 — Redis 단일 스레드 실행 모델). 인자는 바이트 안전한 {@code byte[]}.
  *
- * <p>데이터 명령은 각 핸들러가 미처리 시 null 을 반환하고, 순서대로 시도한 뒤 모두 null 이면
- * unknown-command 에러를 낸다.
+ * <p>연결이 SELECT 한 현재 DB 로 라우팅한다. 자료형 핸들러는 DB별로 미리 구성해 두고
+ * (SWAPDB 는 참조가 아닌 DB 내용을 교환하므로 바인딩이 그대로 유효), 미처리 시 순서대로
+ * 다음 핸들러·키공간 핸들러를 시도한 뒤 모두 null 이면 unknown-command 에러를 낸다.
  */
 public final class CommandDispatcher {
 
-    private final Database db;
-    private final StringCommands strings;
-    private final ExpireCommands expire;
-    private final ListCommands lists;
-    private final HashCommands hashes;
-    private final SetCommands sets;
-    private final ZSetCommands zsets;
+    private final Keyspace ks;
+    private final Handlers[] handlers;
+    private final KeyspaceCommands keyspace;
 
-    public CommandDispatcher(Database db) {
-        this.db = db;
-        this.strings = new StringCommands(db);
-        this.expire = new ExpireCommands(db);
-        this.lists = new ListCommands(db);
-        this.hashes = new HashCommands(db);
-        this.sets = new SetCommands(db);
-        this.zsets = new ZSetCommands(db);
+    public CommandDispatcher(Keyspace ks) {
+        this.ks = ks;
+        this.handlers = new Handlers[ks.count()];
+        for (int i = 0; i < ks.count(); i++) {
+            this.handlers[i] = new Handlers(ks.db(i));
+        }
+        this.keyspace = new KeyspaceCommands(ks);
+    }
+
+    /** 한 논리 DB에 바인딩된 자료형 명령 핸들러 묶음. */
+    private static final class Handlers {
+        final StringCommands strings;
+        final ExpireCommands expire;
+        final ListCommands lists;
+        final HashCommands hashes;
+        final SetCommands sets;
+        final ZSetCommands zsets;
+
+        Handlers(Database db) {
+            this.strings = new StringCommands(db);
+            this.expire = new ExpireCommands(db);
+            this.lists = new ListCommands(db);
+            this.hashes = new HashCommands(db);
+            this.sets = new SetCommands(db);
+            this.zsets = new ZSetCommands(db);
+        }
     }
 
     public Reply dispatch(List<byte[]> args, ConnectionState state) {
@@ -53,22 +69,26 @@ public final class CommandDispatcher {
                 state.setQuit(true);
                 return Reply.ok();
             default:
-                synchronized (db) {
-                    Reply r = strings.execute(name, args);
+                synchronized (ks) {
+                    Handlers h = handlers[state.dbIndex()];
+                    Reply r = h.strings.execute(name, args);
                     if (r == null) {
-                        r = expire.execute(name, args);
+                        r = h.expire.execute(name, args);
                     }
                     if (r == null) {
-                        r = lists.execute(name, args);
+                        r = h.lists.execute(name, args);
                     }
                     if (r == null) {
-                        r = hashes.execute(name, args);
+                        r = h.hashes.execute(name, args);
                     }
                     if (r == null) {
-                        r = sets.execute(name, args);
+                        r = h.sets.execute(name, args);
                     }
                     if (r == null) {
-                        r = zsets.execute(name, args);
+                        r = h.zsets.execute(name, args);
+                    }
+                    if (r == null) {
+                        r = keyspace.execute(name, args, state);
                     }
                     if (r == null) {
                         r = Reply.error("ERR unknown command '"

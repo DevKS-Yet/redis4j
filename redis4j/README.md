@@ -33,6 +33,11 @@ Java 21로 밑바닥부터 구현하는 Redis 클론. 요구사항 정본은 저
   - 지원 명령: `ZADD`(NX/XX/GT/LT/CH/INCR) · `ZREM` · `ZSCORE`/`ZMSCORE` · `ZCARD` · `ZCOUNT` ·
     `ZINCRBY` · `ZRANK`/`ZREVRANK` · `ZRANGE`/`ZREVRANGE`(WITHSCORES) ·
     `ZRANGEBYSCORE`/`ZREVRANGEBYSCORE` · `ZRANGEBYLEX` · `ZREMRANGEBYRANK`/`ZREMRANGEBYSCORE`
+- **REQ-KEY-FUNC-01** — 키 공간 관리·다중 논리 DB (완료·검증)
+  - `Keyspace`(기본 16 DB) + 전역 실행 락, 연결별 SELECT 인덱스, SWAPDB 는 DB 내용 교환
+  - glob 매처(`*` · `?` · `[...]`), SCAN 커서(정렬 키 오프셋, MATCH/COUNT/TYPE)
+  - 지원 명령: `KEYS` · `SCAN` · `RANDOMKEY` · `DBSIZE` · `RENAME`/`RENAMENX` ·
+    `FLUSHDB`/`FLUSHALL` · `SELECT` · `SWAPDB` · `UNLINK` (DEL/EXISTS/TYPE 은 String 단계)
 
 ## 기술 스택
 

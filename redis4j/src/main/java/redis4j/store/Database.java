@@ -1,7 +1,11 @@
 package redis4j.store;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 단일 논리 DB의 중앙 키 공간. lazy(수동) 만료를 포함한다 — 만료된 키는 접근 시 제거된다.
@@ -14,7 +18,7 @@ public final class Database {
     /** expireAtMillis == 0 이면 만료 없음. */
     private record Entry(RedisObject value, long expireAtMillis) {}
 
-    private final Map<String, Entry> map = new HashMap<>();
+    private Map<String, Entry> map = new HashMap<>();
 
     /** 값 조회. 없거나 만료면 null(만료면 제거까지 수행). */
     public RedisObject get(String key) {
@@ -121,9 +125,57 @@ public final class Database {
         return removed;
     }
 
-    /** 만료 정리 없이 현재 맵 크기(검증·디버깅용). */
+    /** 만료 정리 없이 현재 맵 크기(DBSIZE·검증·디버깅용). */
     public int rawSize() {
         return map.size();
+    }
+
+    /** 살아있는(비만료) 키 목록. 순회 중 만료된 키는 제거한다(lazy 정리). KEYS·SCAN·RANDOMKEY용. */
+    public List<String> liveKeys() {
+        long now = System.currentTimeMillis();
+        List<String> out = new ArrayList<>(map.size());
+        Iterator<Map.Entry<String, Entry>> it = map.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, Entry> me = it.next();
+            Entry e = me.getValue();
+            if (e.expireAtMillis() != 0 && now >= e.expireAtMillis()) {
+                it.remove();
+            } else {
+                out.add(me.getKey());
+            }
+        }
+        return out;
+    }
+
+    /** 임의의 살아있는 키. 없으면 null(RANDOMKEY). */
+    public String randomKey() {
+        List<String> keys = liveKeys();
+        if (keys.isEmpty()) {
+            return null;
+        }
+        return keys.get(ThreadLocalRandom.current().nextInt(keys.size()));
+    }
+
+    /** src(비만료)를 dst로 이동. 값·만료 유지, dst 덮어씀. src 없으면 false(RENAME/RENAMENX). */
+    public boolean rename(String src, String dst) {
+        if (get(src) == null) {                                  // get()이 만료 시 정리
+            return false;
+        }
+        Entry e = map.remove(src);
+        map.put(dst, e);
+        return true;
+    }
+
+    /** 이 DB의 모든 키 제거(FLUSHDB). */
+    public void clear() {
+        map.clear();
+    }
+
+    /** 두 DB의 내용(맵)을 통째로 교환(SWAPDB). 명령 핸들러가 참조하는 인스턴스는 그대로 유효. */
+    public void swapContentsWith(Database other) {
+        Map<String, Entry> tmp = this.map;
+        this.map = other.map;
+        other.map = tmp;
     }
 
     private boolean isExpired(Entry e) {
