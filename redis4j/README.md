@@ -38,6 +38,11 @@ Java 21로 밑바닥부터 구현하는 Redis 클론. 요구사항 정본은 저
   - glob 매처(`*` · `?` · `[...]`), SCAN 커서(정렬 키 오프셋, MATCH/COUNT/TYPE)
   - 지원 명령: `KEYS` · `SCAN` · `RANDOMKEY` · `DBSIZE` · `RENAME`/`RENAMENX` ·
     `FLUSHDB`/`FLUSHALL` · `SELECT` · `SWAPDB` · `UNLINK` (DEL/EXISTS/TYPE 은 String 단계)
+- **REQ-PUBSUB-FUNC-01** — 발행/구독 메시징 (완료·검증)
+  - 서버→클라이언트 비동기 푸시, 연결별 동기화 출력(`ClientOutput`)으로 응답·메시지 프레임 직렬화
+  - 패턴 구독(glob), 구독 모드 명령 제한, 연결 종료 시 자동 구독 해제, fire-and-forget
+  - 지원 명령: `SUBSCRIBE`/`UNSUBSCRIBE` · `PSUBSCRIBE`/`PUNSUBSCRIBE` · `PUBLISH` ·
+    `PUBSUB CHANNELS`/`NUMSUB`/`NUMPAT`
 
 ## 기술 스택
 

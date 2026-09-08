@@ -1,0 +1,22 @@
+verify-pubsub: redis4j on port 13895
+PASS ① SUBSCRIBE c1 확인
+PASS PUBLISH c1 hi -> :1
+PASS ① A message 수신
+PASS ② PSUBSCRIBE news.* 확인
+PASS PUBLISH news.tech x -> :1
+PASS ② P pmessage 수신
+PASS ③ PUBLISH room hey -> :2
+PASS PUBLISH nobody hey -> :0
+PASS 구독 중 GET -> ERR 제한
+PASS 구독 중 PING -> [pong,""]
+PASS 구독 중 PING hello -> [pong,hello]
+PASS UNSUBSCRIBE c1 -> count 0
+PASS UNSUBSCRIBE 후 GET x -> nil(정상 모드)
+PASS PUBSUB CHANNELS -> room 포함, c1 미포함
+PASS PUBSUB NUMSUB room -> [room,2]
+PASS PUBSUB NUMPAT -> :1
+PASS SUBSCRIBE gone 후 NUMSUB -> [gone,1]
+PASS ④ 연결 종료 후 NUMSUB gone -> [gone,0]
+---
+PASS=18 FAIL=0
+ALL PASS

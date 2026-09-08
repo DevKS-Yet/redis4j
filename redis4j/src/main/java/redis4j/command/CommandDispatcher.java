@@ -1,6 +1,7 @@
 package redis4j.command;
 
 import redis4j.protocol.Reply;
+import redis4j.pubsub.PubSub;
 import redis4j.server.ConnectionState;
 import redis4j.store.Database;
 import redis4j.store.Keyspace;
@@ -23,6 +24,8 @@ public final class CommandDispatcher {
     private final Keyspace ks;
     private final Handlers[] handlers;
     private final KeyspaceCommands keyspace;
+    private final PubSub pubSub = new PubSub();
+    private final PubSubCommands pubSubCommands = new PubSubCommands(pubSub);
 
     public CommandDispatcher(Keyspace ks) {
         this.ks = ks;
@@ -31,6 +34,20 @@ public final class CommandDispatcher {
             this.handlers[i] = new Handlers(ks.db(i));
         }
         this.keyspace = new KeyspaceCommands(ks);
+    }
+
+    /** 연결 종료 시 정리 — 남은 구독을 레지스트리에서 제거(자동 구독 해제). */
+    public void onDisconnect(ConnectionState state) {
+        if (state.subscriber() != null) {
+            pubSub.removeAll(state.subscriber());
+        }
+    }
+
+    private static boolean allowedInSubscribe(String name) {
+        return switch (name) {
+            case "SUBSCRIBE", "UNSUBSCRIBE", "PSUBSCRIBE", "PUNSUBSCRIBE", "PING", "QUIT" -> true;
+            default -> false;
+        };
     }
 
     /** 한 논리 DB에 바인딩된 자료형 명령 핸들러 묶음. */
@@ -57,8 +74,16 @@ public final class CommandDispatcher {
             return Reply.error("ERR empty command");
         }
         String name = new String(args.get(0), StandardCharsets.UTF_8).toUpperCase(Locale.ROOT);
+        if (state.isSubscribed() && !allowedInSubscribe(name)) {
+            return Reply.error("ERR Can't execute '" + name.toLowerCase(Locale.ROOT)
+                    + "': only (P)SUBSCRIBE / (P)UNSUBSCRIBE / PING / QUIT are allowed in this context");
+        }
         switch (name) {
             case "PING":
+                if (state.isSubscribed()) {                     // 구독 모드: 배열 형태 pong
+                    Reply payload = args.size() > 1 ? Reply.bulk(args.get(1)) : Reply.bulk("");
+                    return new Reply.Array(List.of(Reply.bulk("pong"), payload));
+                }
                 return args.size() > 1 ? Reply.bulk(args.get(1)) : Reply.pong();
             case "ECHO":
                 return args.size() == 2 ? Reply.bulk(args.get(1))
@@ -68,6 +93,8 @@ public final class CommandDispatcher {
             case "QUIT":
                 state.setQuit(true);
                 return Reply.ok();
+            case "SUBSCRIBE", "UNSUBSCRIBE", "PSUBSCRIBE", "PUNSUBSCRIBE", "PUBLISH", "PUBSUB":
+                return pubSubCommands.execute(name, args, state);   // 구독 확인·메시지는 자체 전송(null 가능)
             default:
                 synchronized (ks) {
                     Handlers h = handlers[state.dbIndex()];
