@@ -8,7 +8,8 @@ import java.util.List;
  * 중첩 레코드는 항상 {@code Reply.Xxx} 로 정규화해 참조한다.
  */
 public sealed interface Reply
-        permits Reply.Simple, Reply.Error, Reply.Integer, Reply.Bulk, Reply.Array, Reply.Nil {
+        permits Reply.Simple, Reply.Error, Reply.Integer, Reply.Bulk, Reply.Array, Reply.Nil,
+                Reply.NilArray {
 
     /** +단순 문자열 (CR/LF 불가) */
     record Simple(String value) implements Reply {}
@@ -27,6 +28,9 @@ public sealed interface Reply
 
     /** Null 벌크 ($-1) */
     record Nil() implements Reply {}
+
+    /** Null 배열 (*-1) — EXEC 취소(WATCH) 응답 */
+    record NilArray() implements Reply {}
 
     static Reply ok() { return new Simple("OK"); }
     static Reply pong() { return new Simple("PONG"); }

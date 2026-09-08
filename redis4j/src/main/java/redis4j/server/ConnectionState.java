@@ -1,14 +1,16 @@
 package redis4j.server;
 
 import redis4j.pubsub.Subscriber;
+import redis4j.tx.TxState;
 
-/** 연결별 가변 상태. QUIT 플래그·선택 DB 인덱스(SELECT)·출력 sink·구독 상태. */
+/** 연결별 가변 상태. QUIT 플래그·선택 DB 인덱스(SELECT)·출력 sink·구독 상태·트랜잭션 상태. */
 public final class ConnectionState {
 
     private boolean quit;
     private int dbIndex;
     private ClientOutput output;
     private Subscriber subscriber;
+    private final TxState tx = new TxState();
 
     public boolean isQuit() {
         return quit;
@@ -50,5 +52,10 @@ public final class ConnectionState {
     /** 구독 모드 여부(채널·패턴 구독이 하나라도 있으면 true). 허용 명령 제한에 쓴다. */
     public boolean isSubscribed() {
         return subscriber != null && subscriber.subscriptionCount() > 0;
+    }
+
+    /** 이 연결의 트랜잭션 상태(MULTI 큐·WATCH). */
+    public TxState tx() {
+        return tx;
     }
 }

@@ -5,8 +5,11 @@ import redis4j.pubsub.PubSub;
 import redis4j.server.ConnectionState;
 import redis4j.store.Database;
 import redis4j.store.Keyspace;
+import redis4j.tx.Transactions;
+import redis4j.tx.TxState;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -26,6 +29,7 @@ public final class CommandDispatcher {
     private final KeyspaceCommands keyspace;
     private final PubSub pubSub = new PubSub();
     private final PubSubCommands pubSubCommands = new PubSubCommands(pubSub);
+    private final Transactions transactions = new Transactions();
 
     public CommandDispatcher(Keyspace ks) {
         this.ks = ks;
@@ -78,6 +82,24 @@ public final class CommandDispatcher {
             return Reply.error("ERR Can't execute '" + name.toLowerCase(Locale.ROOT)
                     + "': only (P)SUBSCRIBE / (P)UNSUBSCRIBE / PING / QUIT are allowed in this context");
         }
+        switch (name) {                                         // 트랜잭션 제어(큐잉 대상 아님)
+            case "MULTI":
+                return multi(state);
+            case "DISCARD":
+                return discard(state);
+            case "WATCH":
+                return watch(args, state);
+            case "UNWATCH":
+                state.tx().unwatch();
+                return Reply.ok();
+            case "EXEC":
+                return exec(state);
+            default:
+                break;
+        }
+        if (state.tx().inMulti()) {                             // MULTI 중이면 큐에 적재(+QUEUED)
+            return queue(name, args, state);
+        }
         switch (name) {
             case "PING":
                 if (state.isSubscribed()) {                     // 구독 모드: 배열 형태 pong
@@ -97,32 +119,149 @@ public final class CommandDispatcher {
                 return pubSubCommands.execute(name, args, state);   // 구독 확인·메시지는 자체 전송(null 가능)
             default:
                 synchronized (ks) {
-                    Handlers h = handlers[state.dbIndex()];
-                    Reply r = h.strings.execute(name, args);
-                    if (r == null) {
-                        r = h.expire.execute(name, args);
-                    }
-                    if (r == null) {
-                        r = h.lists.execute(name, args);
-                    }
-                    if (r == null) {
-                        r = h.hashes.execute(name, args);
-                    }
-                    if (r == null) {
-                        r = h.sets.execute(name, args);
-                    }
-                    if (r == null) {
-                        r = h.zsets.execute(name, args);
-                    }
-                    if (r == null) {
-                        r = keyspace.execute(name, args, state);
-                    }
-                    if (r == null) {
-                        r = Reply.error("ERR unknown command '"
-                                + new String(args.get(0), StandardCharsets.UTF_8) + "'");
-                    }
-                    return r;
+                    return executeData(name, args, state);
                 }
         }
+    }
+
+    /** 자료형·키공간 명령 실행(호출자가 {@code synchronized(ks)} 보유). WATCH 버전 증가 포함. */
+    private Reply executeData(String name, List<byte[]> args, ConnectionState state) {
+        Handlers h = handlers[state.dbIndex()];
+        Reply r = h.strings.execute(name, args);
+        if (r == null) {
+            r = h.expire.execute(name, args);
+        }
+        if (r == null) {
+            r = h.lists.execute(name, args);
+        }
+        if (r == null) {
+            r = h.hashes.execute(name, args);
+        }
+        if (r == null) {
+            r = h.sets.execute(name, args);
+        }
+        if (r == null) {
+            r = h.zsets.execute(name, args);
+        }
+        if (r == null) {
+            r = keyspace.execute(name, args, state);
+        }
+        if (r == null) {
+            r = Reply.error("ERR unknown command '"
+                    + new String(args.get(0), StandardCharsets.UTF_8) + "'");
+        }
+        bumpWatchVersions(name, args, state);
+        return r;
+    }
+
+    /** 쓰기/대량변경 시 WATCH 버전·epoch 를 올린다(추적 중인 키만 실제 증가). */
+    private void bumpWatchVersions(String name, List<byte[]> args, ConnectionState state) {
+        if (CommandCatalog.isWrite(name)) {
+            int db = state.dbIndex();
+            for (String key : CommandCatalog.writtenKeys(name, args)) {
+                transactions.bump(db, key);
+            }
+        } else if (name.equals("FLUSHDB") || name.equals("FLUSHALL") || name.equals("SWAPDB")) {
+            transactions.bumpEpoch();
+        }
+    }
+
+    private Reply multi(ConnectionState state) {
+        if (state.tx().inMulti()) {
+            return Reply.error("ERR MULTI calls can not be nested");
+        }
+        state.tx().beginMulti();
+        return Reply.ok();
+    }
+
+    private Reply discard(ConnectionState state) {
+        if (!state.tx().inMulti()) {
+            return Reply.error("ERR DISCARD without MULTI");
+        }
+        state.tx().endMulti();
+        state.tx().unwatch();
+        return Reply.ok();
+    }
+
+    private Reply watch(List<byte[]> args, ConnectionState state) {
+        if (args.size() < 2) {
+            return Reply.error("ERR wrong number of arguments for 'watch' command");
+        }
+        if (state.tx().inMulti()) {
+            return Reply.error("ERR WATCH inside MULTI is not allowed");
+        }
+        synchronized (ks) {
+            int db = state.dbIndex();
+            for (int i = 1; i < args.size(); i++) {
+                String key = new String(args.get(i), StandardCharsets.UTF_8);
+                long v = transactions.track(db, key);
+                state.tx().watch(db, key, v, transactions.epoch());
+            }
+        }
+        return Reply.ok();
+    }
+
+    private Reply queue(String name, List<byte[]> args, ConnectionState state) {
+        if (isSubscribeFamily(name)) {                          // (P)SUBSCRIBE 계열은 MULTI 안에서 불가
+            state.tx().markQueueError();
+            return Reply.error("ERR " + name + " is not allowed in transactions");
+        }
+        if (!CommandCatalog.isKnown(name)) {                    // 미지 명령 → EXECABORT 예약
+            state.tx().markQueueError();
+            return Reply.error("ERR unknown command '"
+                    + new String(args.get(0), StandardCharsets.UTF_8) + "'");
+        }
+        state.tx().enqueue(args);
+        return new Reply.Simple("QUEUED");
+    }
+
+    private Reply exec(ConnectionState state) {
+        TxState tx = state.tx();
+        if (!tx.inMulti()) {
+            return Reply.error("ERR EXEC without MULTI");
+        }
+        if (tx.queueError()) {                                  // 큐잉 중 오류 → 트랜잭션 폐기
+            tx.endMulti();
+            tx.unwatch();
+            return Reply.error("EXECABORT Transaction discarded because of previous errors.");
+        }
+        synchronized (ks) {
+            if (watchDirty(state)) {                            // 감시 키 변경 → 취소(null array)
+                tx.endMulti();
+                tx.unwatch();
+                return new Reply.NilArray();
+            }
+            List<Reply> results = new ArrayList<>(tx.queued().size());
+            for (List<byte[]> cmd : tx.queued()) {
+                String cn = new String(cmd.get(0), StandardCharsets.UTF_8).toUpperCase(Locale.ROOT);
+                results.add(executeData(cn, cmd, state));       // 런타임 오류는 해당 원소만 오류(롤백 없음)
+            }
+            tx.endMulti();
+            tx.unwatch();
+            return new Reply.Array(results);
+        }
+    }
+
+    private boolean watchDirty(ConnectionState state) {
+        TxState tx = state.tx();
+        if (!tx.watching()) {
+            return false;
+        }
+        if (transactions.epoch() != tx.watchedEpoch()) {
+            return true;
+        }
+        for (TxState.Watch w : tx.watched()) {
+            if (transactions.version(w.db(), w.key()) != w.version()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isSubscribeFamily(String name) {
+        return switch (name) {
+            case "SUBSCRIBE", "UNSUBSCRIBE", "PSUBSCRIBE", "PUNSUBSCRIBE" -> true;
+            default -> false;
+        };
     }
 }

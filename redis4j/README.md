@@ -43,6 +43,11 @@ Java 21로 밑바닥부터 구현하는 Redis 클론. 요구사항 정본은 저
   - 패턴 구독(glob), 구독 모드 명령 제한, 연결 종료 시 자동 구독 해제, fire-and-forget
   - 지원 명령: `SUBSCRIBE`/`UNSUBSCRIBE` · `PSUBSCRIBE`/`PUNSUBSCRIBE` · `PUBLISH` ·
     `PUBSUB CHANNELS`/`NUMSUB`/`NUMPAT`
+- **REQ-TX-FUNC-01** — 트랜잭션 + WATCH 낙관적 잠금 (완료·검증)
+  - MULTI 큐잉(+QUEUED), EXEC 원자 실행(전역 락 격리)·결과 배열, DISCARD, 롤백 없음
+  - WATCH: 감시 키 버전 추적 + 대량변경 epoch → 변경 시 EXEC 취소(Null Array `*-1`)
+  - 큐잉 중 미지 명령 → EXECABORT, EXEC 중 런타임 오류는 해당 원소만 오류
+  - 지원 명령: `MULTI` · `EXEC` · `DISCARD` · `WATCH` · `UNWATCH`
 
 ## 기술 스택
 

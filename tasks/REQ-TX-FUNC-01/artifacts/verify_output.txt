@@ -1,0 +1,31 @@
+verify-tx: redis4j on port 57000
+PASS MULTI -> +OK
+PASS SET a 1 -> +QUEUED
+PASS INCR a -> +QUEUED
+PASS ① EXEC -> [+OK, 2]
+PASS EXEC 후 GET a -> 2
+PASS WATCH k -> +OK
+PASS SET k 2 -> +QUEUED
+PASS 다른 연결 SET k 99 -> +OK
+PASS ② EXEC (감시 위반) -> nil
+PASS 취소 후 GET k -> 99 (트랜잭션 미적용)
+PASS WATCH 미위반 EXEC -> [+OK]
+PASS GET w -> 5
+PASS UNWATCH 후 EXEC -> [+OK]
+PASS GET u -> 2 (트랜잭션 적용)
+PASS SET d 1 -> +QUEUED
+PASS ③ DISCARD -> +OK
+PASS DISCARD 후 GET d -> nil
+PASS DISCARD 후 MULTI -> +OK (상태 복귀)
+PASS SET x 1 -> +QUEUED
+PASS NOTACOMMAND -> ERR unknown
+PASS ④ EXEC -> EXECABORT
+PASS EXECABORT 후 GET x -> nil (폐기)
+PASS ⑤ EXEC -> [+OK, -ERR, +OK]
+PASS 런타임 오류에도 SET s2 진행 -> ok
+PASS EXEC without MULTI -> ERR
+PASS DISCARD without MULTI -> ERR
+PASS MULTI 중첩 -> ERR
+---
+PASS=27 FAIL=0
+ALL PASS

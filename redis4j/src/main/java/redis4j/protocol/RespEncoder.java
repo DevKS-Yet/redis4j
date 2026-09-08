@@ -9,6 +9,7 @@ public final class RespEncoder {
 
     private static final byte[] CRLF = {'\r', '\n'};
     private static final byte[] NIL_BYTES = "$-1\r\n".getBytes(StandardCharsets.US_ASCII);
+    private static final byte[] NIL_ARRAY_BYTES = "*-1\r\n".getBytes(StandardCharsets.US_ASCII);
 
     private RespEncoder() {}
 
@@ -25,6 +26,7 @@ public final class RespEncoder {
                 out.write(CRLF);
             }
             case Reply.Nil n -> out.write(NIL_BYTES);
+            case Reply.NilArray n -> out.write(NIL_ARRAY_BYTES);
             case Reply.Array a -> {
                 out.write('*');
                 writeUtf8(out, java.lang.Integer.toString(a.items().size()));
