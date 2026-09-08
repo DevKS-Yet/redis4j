@@ -130,6 +130,23 @@ public final class Database {
         return map.size();
     }
 
+    /** 스냅샷 항목: 키·값·만료 절대시각(0=만료없음). RDB 직렬화용. */
+    public record LiveEntry(String key, RedisObject value, long expireAtMillis) {}
+
+    /** 살아있는(비만료) 항목 스냅샷(값·TTL 포함). 만료 항목은 제외(제거는 안 함). RDB 저장용. */
+    public List<LiveEntry> liveEntries() {
+        long now = System.currentTimeMillis();
+        List<LiveEntry> out = new ArrayList<>(map.size());
+        for (Map.Entry<String, Entry> me : map.entrySet()) {
+            Entry e = me.getValue();
+            if (e.expireAtMillis() != 0 && now >= e.expireAtMillis()) {
+                continue;
+            }
+            out.add(new LiveEntry(me.getKey(), e.value(), e.expireAtMillis()));
+        }
+        return out;
+    }
+
     /** 살아있는(비만료) 키 목록. 순회 중 만료된 키는 제거한다(lazy 정리). KEYS·SCAN·RANDOMKEY용. */
     public List<String> liveKeys() {
         long now = System.currentTimeMillis();

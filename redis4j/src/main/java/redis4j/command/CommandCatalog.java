@@ -16,9 +16,10 @@ public final class CommandCatalog {
 
     /** 지원 명령 전체(연결·트랜잭션·발행구독·데이터·키공간). 미지 명령 판별용. */
     public static final Set<String> KNOWN = Set.of(
-            // connection / tx / pubsub
+            // connection / tx / pubsub / server
             "PING", "ECHO", "COMMAND", "QUIT", "MULTI", "EXEC", "DISCARD", "WATCH", "UNWATCH",
             "SUBSCRIBE", "UNSUBSCRIBE", "PSUBSCRIBE", "PUNSUBSCRIBE", "PUBLISH", "PUBSUB",
+            "SAVE", "BGSAVE", "LASTSAVE",
             // string
             "SET", "GET", "GETSET", "GETDEL", "APPEND", "STRLEN", "SETNX", "MSET", "MSETNX", "MGET",
             "INCR", "DECR", "INCRBY", "DECRBY", "INCRBYFLOAT", "DEL", "EXISTS", "TYPE",

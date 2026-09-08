@@ -1,0 +1,25 @@
+PASS ① SAVE -> +OK
+PASS ① 스냅샷 파일 생성
+PASS ③ 임시파일 잔존 없음(원자적 rename)
+PASS LASTSAVE -> 양의 정수
+PASS ② GET s -> hello
+PASS ② LRANGE l -> [a,b,c]
+PASS ② HGETALL h -> f1 v1 f2 v2
+PASS ② SMEMBERS st -> [m1,m2]
+PASS ② ZRANGE z WITHSCORES -> [a,1,b,2]
+PASS ② TTL 복원 (0 < PTTL <= 100000)
+PASS ② DBSIZE(db0) -> 6
+PASS ② db1 격리 복원 GET d1key -> d1val
+PASS ④ 빈 SAVE -> +OK
+PASS ④ 빈 스냅샷 파일 생성
+PASS ④ DBSIZE -> 0
+PASS ④ 빈 스냅샷 로드 후 DBSIZE -> 0
+PASS ③ 재-SAVE -> +OK
+PASS ③ 재저장 후 임시파일 없음
+PASS ③ 재저장분 로드 GET s -> changed
+PASS BGSAVE -> +Background saving started
+PASS BGSAVE 파일 생성됨
+PASS BGSAVE분 로드 GET bk -> bv
+---
+PASS=22 FAIL=0
+ALL PASS

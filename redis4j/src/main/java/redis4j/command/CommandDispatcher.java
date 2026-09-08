@@ -1,5 +1,6 @@
 package redis4j.command;
 
+import redis4j.persistence.rdb.RdbManager;
 import redis4j.protocol.Reply;
 import redis4j.pubsub.PubSub;
 import redis4j.server.ConnectionState;
@@ -27,17 +28,19 @@ public final class CommandDispatcher {
     private final Keyspace ks;
     private final Handlers[] handlers;
     private final KeyspaceCommands keyspace;
+    private final ServerCommands serverCommands;
     private final PubSub pubSub = new PubSub();
     private final PubSubCommands pubSubCommands = new PubSubCommands(pubSub);
     private final Transactions transactions = new Transactions();
 
-    public CommandDispatcher(Keyspace ks) {
+    public CommandDispatcher(Keyspace ks, RdbManager rdb) {
         this.ks = ks;
         this.handlers = new Handlers[ks.count()];
         for (int i = 0; i < ks.count(); i++) {
             this.handlers[i] = new Handlers(ks.db(i));
         }
         this.keyspace = new KeyspaceCommands(ks);
+        this.serverCommands = new ServerCommands(rdb);
     }
 
     /** 연결 종료 시 정리 — 남은 구독을 레지스트리에서 제거(자동 구독 해제). */
@@ -145,6 +148,9 @@ public final class CommandDispatcher {
         }
         if (r == null) {
             r = keyspace.execute(name, args, state);
+        }
+        if (r == null) {
+            r = serverCommands.execute(name, args);
         }
         if (r == null) {
             r = Reply.error("ERR unknown command '"

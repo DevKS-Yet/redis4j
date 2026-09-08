@@ -48,6 +48,10 @@ Java 21로 밑바닥부터 구현하는 Redis 클론. 요구사항 정본은 저
   - WATCH: 감시 키 버전 추적 + 대량변경 epoch → 변경 시 EXEC 취소(Null Array `*-1`)
   - 큐잉 중 미지 명령 → EXECABORT, EXEC 중 런타임 오류는 해당 원소만 오류
   - 지원 명령: `MULTI` · `EXEC` · `DISCARD` · `WATCH` · `UNWATCH`
+- **REQ-RDB-FUNC-01** — RDB 스냅샷 영속화 (완료·검증)
+  - 자체 포맷(`RDB4J` 매직+버전, 전 자료형·TTL·다중 DB), 임시파일→원자적 rename 으로 손상 방지
+  - SAVE(동기·일관 스냅샷)/BGSAVE(데몬 스레드), 기동 시 자동 로드(`Main` → `dump.rdb4j`)
+  - 지원 명령: `SAVE` · `BGSAVE` · `LASTSAVE`
 
 ## 기술 스택
 

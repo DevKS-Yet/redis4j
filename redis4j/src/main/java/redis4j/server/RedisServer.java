@@ -1,6 +1,7 @@
 package redis4j.server;
 
 import redis4j.command.CommandDispatcher;
+import redis4j.persistence.rdb.RdbManager;
 import redis4j.store.Database;
 import redis4j.store.Keyspace;
 
@@ -8,6 +9,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -21,7 +23,9 @@ public final class RedisServer implements AutoCloseable {
 
     private final int port;
     private final Keyspace keyspace = new Keyspace();
-    private final CommandDispatcher dispatcher = new CommandDispatcher(keyspace);
+    private final RdbManager rdb;
+    private final boolean autoLoad;
+    private final CommandDispatcher dispatcher;
     private final ExecutorService connections = Executors.newVirtualThreadPerTaskExecutor();
     private final ScheduledExecutorService expiryScheduler =
             Executors.newSingleThreadScheduledExecutor(r -> {
@@ -34,8 +38,22 @@ public final class RedisServer implements AutoCloseable {
     private ServerSocket serverSocket;
     private Thread acceptThread;
 
+    /** 기본 생성자. 스냅샷 경로는 {@code dump.rdb4j}(SAVE 대상) 이나 기동 시 자동 로드는 하지 않는다
+     *  — 테스트 격리를 위함. 실 서버는 {@link #RedisServer(int, Path)} 로 자동 로드를 켠다. */
     public RedisServer(int port) {
+        this(port, Path.of("dump.rdb4j"), false);
+    }
+
+    /** 스냅샷 경로를 지정하고 기동 시 해당 파일이 있으면 자동 로드한다. */
+    public RedisServer(int port, Path rdbPath) {
+        this(port, rdbPath, true);
+    }
+
+    private RedisServer(int port, Path rdbPath, boolean autoLoad) {
         this.port = port;
+        this.rdb = new RdbManager(keyspace, rdbPath);
+        this.autoLoad = autoLoad;
+        this.dispatcher = new CommandDispatcher(keyspace, rdb);
     }
 
     /** 전역 실행 락이자 다중 논리 DB 컨테이너(테스트·검증에서 락·확인용). */
@@ -50,6 +68,9 @@ public final class RedisServer implements AutoCloseable {
 
     /** 소켓을 바인딩하고 accept 루프를 시작한 뒤, 실제 리슨 포트를 반환한다(포트 0이면 임의 포트). */
     public int start() throws IOException {
+        if (autoLoad) {
+            rdb.loadIfExists();                                 // accept·만료 스케줄러 전에 복원
+        }
         serverSocket = new ServerSocket();
         serverSocket.setReuseAddress(true);
         serverSocket.bind(new InetSocketAddress(port));
@@ -95,5 +116,6 @@ public final class RedisServer implements AutoCloseable {
         }
         connections.shutdownNow();
         expiryScheduler.shutdownNow();
+        rdb.shutdown();
     }
 }
