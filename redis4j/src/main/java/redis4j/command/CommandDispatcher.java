@@ -24,6 +24,7 @@ public final class CommandDispatcher {
     private final ListCommands lists;
     private final HashCommands hashes;
     private final SetCommands sets;
+    private final ZSetCommands zsets;
 
     public CommandDispatcher(Database db) {
         this.db = db;
@@ -32,6 +33,7 @@ public final class CommandDispatcher {
         this.lists = new ListCommands(db);
         this.hashes = new HashCommands(db);
         this.sets = new SetCommands(db);
+        this.zsets = new ZSetCommands(db);
     }
 
     public Reply dispatch(List<byte[]> args, ConnectionState state) {
@@ -64,6 +66,9 @@ public final class CommandDispatcher {
                     }
                     if (r == null) {
                         r = sets.execute(name, args);
+                    }
+                    if (r == null) {
+                        r = zsets.execute(name, args);
                     }
                     if (r == null) {
                         r = Reply.error("ERR unknown command '"

@@ -1,0 +1,46 @@
+verify-zset: redis4j on port 8249
+PASS ① ZADD z 1 a 2 b 3 c -> :3
+PASS ① ZRANGE z 0 -1 -> [a,b,c]
+PASS ZRANGE WITHSCORES -> [a,1,b,2,c,3]
+PASS ② ZRANGEBYSCORE z 2 3 -> [b,c]
+PASS ZRANGEBYSCORE z (1 3 -> [b,c]
+PASS ZRANGEBYSCORE z -inf +inf -> [a,b,c]
+PASS ③ ZRANK z b -> :1
+PASS ZREVRANK z a -> :2
+PASS ZRANK z nope -> nil
+PASS ZSCORE z b -> 2
+PASS ZSCORE z nope -> nil
+PASS ZCARD z -> :3
+PASS ZCOUNT z 1 2 -> :2
+PASS ZCOUNT z (1 +inf -> :2
+PASS ④ ZINCRBY z 5 a -> 6
+PASS ④ ZSCORE z a -> 6
+PASS ZINCRBY 후 ZRANGE z 0 -1 -> [b,c,a]
+PASS ZREVRANGE z 0 -1 -> [a,c,b]
+PASS ZMSCORE z a b nope -> [6,2,nil]
+PASS ZADD f XX 1 new -> :0
+PASS ZSCORE f new -> nil
+PASS ZADD f NX 1 a -> :1
+PASS ZADD f NX 2 a -> :0
+PASS ZSCORE f a -> 1 (NX 유지)
+PASS ZADD f GT 5 a -> :0
+PASS ZSCORE f a -> 5 (GT 갱신)
+PASS ZADD f GT 3 a -> :0
+PASS ZSCORE f a -> 5 (GT 미갱신)
+PASS ZADD f CH 10 a -> :1 (변경 카운트)
+PASS ZADD f INCR 5 a -> 15
+PASS ZADD f NX INCR 1 a -> nil
+PASS ZRANGEBYLEX lex - + -> [a,b,c,d]
+PASS ZRANGEBYLEX lex [b (d -> [b,c]
+PASS ZREMRANGEBYRANK rr 0 1 -> :2
+PASS ZRANGE rr 0 -1 -> [c,d]
+PASS ZREMRANGEBYSCORE rs 2 3 -> :2
+PASS ZRANGE rs 0 -1 -> [a]
+PASS ZREM re a -> :1
+PASS EXISTS re -> :0 (자동 삭제)
+PASS ZADD(string key) -> WRONGTYPE
+PASS GET(zset key) -> WRONGTYPE
+PASS TYPE z -> +zset
+---
+PASS=42 FAIL=0
+ALL PASS

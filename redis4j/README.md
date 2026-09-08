@@ -28,6 +28,11 @@ Java 21로 밑바닥부터 구현하는 Redis 클론. 요구사항 정본은 저
   - `LinkedHashSet<String>` 기반(원소 순서 비보장), 빈 집합 자동 삭제
   - 지원 명령: `SADD` · `SREM` · `SMEMBERS` · `SISMEMBER` · `SMISMEMBER` · `SCARD` ·
     `SPOP` · `SRANDMEMBER` · `SINTER`/`SUNION`/`SDIFF`(+`STORE`) · `SMOVE`
+- **REQ-ZSET-FUNC-01** — Sorted Set 자료형 (완료·검증)
+  - `HashMap` 멤버→score + `TreeSet<(score,member)>` 정렬(동점 lex), 빈 zset 자동 삭제
+  - 지원 명령: `ZADD`(NX/XX/GT/LT/CH/INCR) · `ZREM` · `ZSCORE`/`ZMSCORE` · `ZCARD` · `ZCOUNT` ·
+    `ZINCRBY` · `ZRANK`/`ZREVRANK` · `ZRANGE`/`ZREVRANGE`(WITHSCORES) ·
+    `ZRANGEBYSCORE`/`ZREVRANGEBYSCORE` · `ZRANGEBYLEX` · `ZREMRANGEBYRANK`/`ZREMRANGEBYSCORE`
 
 ## 기술 스택
 
