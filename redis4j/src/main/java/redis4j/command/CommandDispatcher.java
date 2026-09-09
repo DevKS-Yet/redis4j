@@ -1,5 +1,6 @@
 package redis4j.command;
 
+import redis4j.persistence.aof.AofManager;
 import redis4j.persistence.rdb.RdbManager;
 import redis4j.protocol.Reply;
 import redis4j.pubsub.PubSub;
@@ -29,18 +30,40 @@ public final class CommandDispatcher {
     private final Handlers[] handlers;
     private final KeyspaceCommands keyspace;
     private final ServerCommands serverCommands;
+    private final AofManager aof;
     private final PubSub pubSub = new PubSub();
     private final PubSubCommands pubSubCommands = new PubSubCommands(pubSub);
     private final Transactions transactions = new Transactions();
+    private boolean replaying;
 
-    public CommandDispatcher(Keyspace ks, RdbManager rdb) {
+    public CommandDispatcher(Keyspace ks, RdbManager rdb, AofManager aof) {
         this.ks = ks;
+        this.aof = aof;
         this.handlers = new Handlers[ks.count()];
         for (int i = 0; i < ks.count(); i++) {
             this.handlers[i] = new Handlers(ks.db(i));
         }
         this.keyspace = new KeyspaceCommands(ks);
-        this.serverCommands = new ServerCommands(rdb);
+        this.serverCommands = new ServerCommands(rdb, aof);
+    }
+
+    /** 기동 시 AOF 명령열을 재생해 상태를 복원한다(재생 중 재-기록 안 함). accept 루프 전에 호출. */
+    public void loadFrom(List<List<byte[]>> commands) {
+        ConnectionState state = new ConnectionState();
+        replaying = true;
+        try {
+            synchronized (ks) {
+                for (List<byte[]> cmd : commands) {
+                    if (cmd.isEmpty()) {
+                        continue;
+                    }
+                    String name = new String(cmd.get(0), StandardCharsets.UTF_8).toUpperCase(Locale.ROOT);
+                    executeData(name, cmd, state);
+                }
+            }
+        } finally {
+            replaying = false;
+        }
     }
 
     /** 연결 종료 시 정리 — 남은 구독을 레지스트리에서 제거(자동 구독 해제). */
@@ -157,7 +180,15 @@ public final class CommandDispatcher {
                     + new String(args.get(0), StandardCharsets.UTF_8) + "'");
         }
         bumpWatchVersions(name, args, state);
+        if (aof.isEnabled() && !replaying && isMutating(name)) {
+            aof.append(state.dbIndex(), args);                  // 쓰기 명령을 AOF 에 기록
+        }
         return r;
+    }
+
+    private static boolean isMutating(String name) {
+        return CommandCatalog.isWrite(name)
+                || name.equals("FLUSHDB") || name.equals("FLUSHALL") || name.equals("SWAPDB");
     }
 
     /** 쓰기/대량변경 시 WATCH 버전·epoch 를 올린다(추적 중인 키만 실제 증가). */

@@ -52,6 +52,10 @@ Java 21로 밑바닥부터 구현하는 Redis 클론. 요구사항 정본은 저
   - 자체 포맷(`RDB4J` 매직+버전, 전 자료형·TTL·다중 DB), 임시파일→원자적 rename 으로 손상 방지
   - SAVE(동기·일관 스냅샷)/BGSAVE(데몬 스레드), 기동 시 자동 로드(`Main` → `dump.rdb4j`)
   - 지원 명령: `SAVE` · `BGSAVE` · `LASTSAVE`
+- **REQ-AOF-FUNC-01** — AOF 추가 전용 로그 영속화 (완료·검증)
+  - 쓰기 명령을 RESP 명령열로 append(사람이 읽음), 기동 시 재생 복원(AOF 우선), 다중 DB=`SELECT`
+  - fsync `always`/`everysec`(기본)/`no`, `BGREWRITEAOF` 로 최소 명령셋 압축(절대 `PEXPIREAT`)
+  - 설정은 `PersistenceOptions`(appendonly·경로·fsync) · 지원 명령: `BGREWRITEAOF`
 
 ## 기술 스택
 

@@ -19,7 +19,7 @@ public final class CommandCatalog {
             // connection / tx / pubsub / server
             "PING", "ECHO", "COMMAND", "QUIT", "MULTI", "EXEC", "DISCARD", "WATCH", "UNWATCH",
             "SUBSCRIBE", "UNSUBSCRIBE", "PSUBSCRIBE", "PUNSUBSCRIBE", "PUBLISH", "PUBSUB",
-            "SAVE", "BGSAVE", "LASTSAVE",
+            "SAVE", "BGSAVE", "LASTSAVE", "BGREWRITEAOF",
             // string
             "SET", "GET", "GETSET", "GETDEL", "APPEND", "STRLEN", "SETNX", "MSET", "MSETNX", "MGET",
             "INCR", "DECR", "INCRBY", "DECRBY", "INCRBYFLOAT", "DEL", "EXISTS", "TYPE",

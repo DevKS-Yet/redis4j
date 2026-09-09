@@ -1,0 +1,19 @@
+PASS ② AOF 가 RESP 로 시작(*)
+PASS ② AOF 에 SET/RPUSH RESP 포함
+PASS ② AOF 에 SELECT(db1) 기록
+PASS ① GET s -> hello
+PASS ① LRANGE l -> [a,b,c]
+PASS ① HGETALL h
+PASS ① SMEMBERS st
+PASS ① ZRANGE z WS
+PASS ① db1 격리 복원 GET d1 -> v1
+PASS ③ BGREWRITEAOF -> started
+PASS ③ 재작성 후 파일 크기 감소 (80 < 2156)
+PASS ③ 재작성분 재생 GET c -> 100
+PASS ③ 재작성분 재생 GET k -> v2
+PASS fsync always 재시작 복원 GET dur -> 1
+PASS AOF 우선: b(=AOF 이후 쓰기) 복원 -> 2
+PASS AOF 우선: a 복원 -> 1
+---
+PASS=16 FAIL=0
+ALL PASS

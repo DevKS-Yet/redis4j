@@ -1,5 +1,6 @@
 package redis4j.command;
 
+import redis4j.persistence.aof.AofManager;
 import redis4j.persistence.rdb.RdbManager;
 import redis4j.protocol.Reply;
 
@@ -8,14 +9,16 @@ import java.util.List;
 
 /**
  * 서버·영속화 관리 명령. SAVE 는 동기(일관 스냅샷 저장), BGSAVE 는 백그라운드, LASTSAVE 는
- * 마지막 저장 시각. 키 공간 락은 RdbManager 가 자체적으로 잡으므로 여기서는 감싸지 않는다.
+ * 마지막 저장 시각, BGREWRITEAOF 는 AOF 압축 재작성. 락은 각 관리자가 자체적으로 잡는다.
  */
 public final class ServerCommands {
 
     private final RdbManager rdb;
+    private final AofManager aof;
 
-    public ServerCommands(RdbManager rdb) {
+    public ServerCommands(RdbManager rdb, AofManager aof) {
         this.rdb = rdb;
+        this.aof = aof;
     }
 
     public Reply execute(String name, List<byte[]> a) {
@@ -23,8 +26,24 @@ public final class ServerCommands {
             case "SAVE" -> save(a);
             case "BGSAVE" -> bgsave(a);
             case "LASTSAVE" -> lastsave(a);
+            case "BGREWRITEAOF" -> bgrewriteaof(a);
             default -> null;
         };
+    }
+
+    private Reply bgrewriteaof(List<byte[]> a) {
+        if (a.size() != 1) {
+            return arity("bgrewriteaof");
+        }
+        if (!aof.isEnabled()) {
+            return Reply.error("ERR AOF is not enabled");
+        }
+        try {
+            aof.rewrite();
+            return new Reply.Simple("Background append only file rewriting started");
+        } catch (IOException e) {
+            return Reply.error("ERR " + e.getMessage());
+        }
     }
 
     private Reply save(List<byte[]> a) {
