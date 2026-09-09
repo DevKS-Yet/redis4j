@@ -1,0 +1,6 @@
+redis4j benchmark — 비파이프라인, loopback
+clients=32 opsPerClient=20000 (total 640000 ops/type)
+JVM=21.0.9 cpus=12
+---
+SET   QPS=117,987  p50=0.266ms  p99=0.470ms  p999=0.631ms  max=1.951ms  (5.42s)
+GET   QPS=113,248  p50=0.274ms  p99=0.511ms  p999=0.763ms  max=7.445ms  (5.65s)

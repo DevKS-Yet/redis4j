@@ -1,0 +1,11 @@
+PASS ① 동일 키 동시 SADD 일관 SCARD -> 10000
+PASS ② INCR 동시 50000회 = 정확히 50000
+PASS ③ 혼합 부하 완료(무데드락) 527ms
+PASS ③ INCR 불변식 counter == 20000
+PASS ③ RPUSH 불변식 LLEN log == 20000
+PASS #5 상한 이내 3연결 정상
+PASS #5 상한 초과 거부(-ERR max number of clients reached)
+PASS #5 연결 정리 후 activeClients == 0
+PASS #5 정리 후 재수용 PING -> PONG
+---
+PASS=9 FAIL=0

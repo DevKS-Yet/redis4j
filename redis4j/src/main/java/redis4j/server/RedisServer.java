@@ -7,14 +7,17 @@ import redis4j.store.Database;
 import redis4j.store.Keyspace;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * RESP2 TCP 서버. accept 루프는 전용(non-daemon) 플랫폼 스레드에서 돌고,
@@ -35,6 +38,10 @@ public final class RedisServer implements AutoCloseable {
                 t.setDaemon(true);
                 return t;
             });
+
+    private static final int DEFAULT_MAX_CLIENTS = 10_000;
+    private volatile int maxClients = DEFAULT_MAX_CLIENTS;   // 연결 자원 상한(NFR)
+    private final AtomicInteger activeClients = new AtomicInteger();
 
     private volatile boolean running;
     private ServerSocket serverSocket;
@@ -70,6 +77,16 @@ public final class RedisServer implements AutoCloseable {
         return keyspace.db(0);
     }
 
+    /** 현재 활성 연결 수(검증·모니터링용). */
+    public int activeClients() {
+        return activeClients.get();
+    }
+
+    /** 연결 수 상한 설정(검증용). start() 전/후 모두 반영. */
+    public void setMaxClients(int n) {
+        this.maxClients = n;
+    }
+
     /** 소켓을 바인딩하고 accept 루프를 시작한 뒤, 실제 리슨 포트를 반환한다(포트 0이면 임의 포트). */
     public int start() throws IOException {
         if (autoLoad) {                                         // accept·만료 스케줄러 전에 복원
@@ -96,7 +113,18 @@ public final class RedisServer implements AutoCloseable {
         while (running) {
             try {
                 Socket client = serverSocket.accept();
-                connections.submit(new ConnectionHandler(client, dispatcher));
+                if (activeClients.incrementAndGet() > maxClients) {  // 연결 자원 상한 초과
+                    activeClients.decrementAndGet();
+                    rejectExcess(client);
+                    continue;
+                }
+                connections.submit(() -> {
+                    try {
+                        new ConnectionHandler(client, dispatcher).run();
+                    } finally {
+                        activeClients.decrementAndGet();             // 연결 정리 시 카운트 반환
+                    }
+                });
             } catch (IOException e) {
                 if (running) {
                     System.err.println("accept 실패: " + e.getMessage());
@@ -104,6 +132,17 @@ public final class RedisServer implements AutoCloseable {
                     break;                                  // close()에 의한 정상 종료
                 }
             }
+        }
+    }
+
+    /** 연결 상한 초과 시 표준 에러를 보내고 소켓을 닫는다(Redis 규약). */
+    private void rejectExcess(Socket client) {
+        try (Socket s = client) {
+            OutputStream out = s.getOutputStream();
+            out.write("-ERR max number of clients reached\r\n".getBytes(StandardCharsets.US_ASCII));
+            out.flush();
+        } catch (IOException ignored) {
+            // 거부 중 쓰기 실패는 무시 — 어차피 닫는다.
         }
     }
 
