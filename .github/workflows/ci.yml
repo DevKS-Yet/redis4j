@@ -1,0 +1,39 @@
+name: redis4j CI
+
+on:
+  push:
+    paths:
+      - "redis4j/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "redis4j/**"
+      - ".github/workflows/ci.yml"
+
+defaults:
+  run:
+    working-directory: redis4j
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build & test (with coverage)
+        run: ./gradlew --no-daemon build jacocoTestReport
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            redis4j/build/reports/tests/test
+            redis4j/build/reports/jacoco/test

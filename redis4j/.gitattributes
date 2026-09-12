@@ -1,0 +1,4 @@
+# Gradle wrapper: gradlew must stay LF so it runs on Linux CI
+gradlew         text eol=lf
+gradlew.bat     text eol=crlf
+*.jar           binary

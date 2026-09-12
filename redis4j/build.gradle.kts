@@ -1,5 +1,6 @@
 plugins {
     application
+    jacoco
 }
 
 group = "redis4j"
@@ -27,4 +28,16 @@ application {
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+    testLogging {
+        events("passed", "skipped", "failed")
+    }
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }
