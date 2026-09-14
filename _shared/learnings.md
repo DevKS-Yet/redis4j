@@ -171,3 +171,12 @@
 **교훈**: 단계형 요구사항의 [검증 기준]이 **뒤 단계 기능을 전방 참조**할 수 있다(STR의 ③ "비-String 키 GET→WRONGTYPE"는 타입 생성 명령이 LIST 단계라 아직 없고, ④ TTL 확인은 EXPIRE 단계). 이때 (a) 현 단계에서 가능한 **기계 수준**으로 낮춰 판정하고(비-STRING 값을 Database에 직접 주입해 WRONGTYPE 경로 확인), (b) 종단 재확인은 그 기능을 소유한 단계로 **명시 이관**하며, (c) 두 결정을 log에 남긴다 — 완료조건을 "검증 불가"로 미루지도, 없는 기능을 앞당겨 구현하지도 않는 중간 지점.
 **부수 교훈 — 하위 계층 리팩터는 상위 단계 회귀 검증과 한 세트**: 값 바이트 안전([제약])을 위해 NET 단계의 RespDecoder를 String→byte[]로 바꿨다. 이런 기반 변경은 반드시 이전 단계 검증 하니스(NET Verify)를 **재실행**해 회귀 0을 확인하고 log에 남긴다(이번 PASS 7/0 유지).
 **worker**: orchestrator 단독(요청문 변환·구현·JDK 검증·NET 회귀). 워커 호출 없음 — inline([임의 결정 2]).
+
+## [2026-09-14] [ci-gradlew-exec-bit]
+**교훈**: **Windows에서 생성한 `gradlew`는 git 실행비트가 안 붙어(100644) Linux CI에서 `./gradlew`가 Permission denied(exit 126)로 죽는다.** redis4j CI(ubuntu-latest)의 최초 런이 "Build & test"에서 failure였는데, 로컬 Windows는 `gradlew.bat`으로 돌리고 실행비트 개념이 없어 `clean build` 67/67 그린이라 원인이 로컬에서 재현 안 됐다. `.gitattributes`(`gradlew text eol=lf`)는 **줄바꿈만** 강제할 뿐 실행비트는 못 세팅한다 — 별개 축이다. 진단은 (a) 로컬 clean 빌드로 코드 무결 확인 → 플랫폼 전용 실패로 좁히고, (b) `git ls-files --stage redis4j/gradlew`로 모드 100644 확인. 조치는 `git update-index --chmod=+x redis4j/gradlew`(blob 불변, 100644→100755) 커밋 1개. **줄바꿈이 정상(LF)이어도 실행비트는 따로 확인해야 한다.**
+**부수 교훈 — Actions 로그는 admin 권한이 없으면 못 받는다(403)**: `/actions/runs/<id>/logs`는 공개 repo라도 "Must have admin rights"로 막힌다. `gh` CLI 부재 시엔 로그 다운로드 대신 `/actions/runs`·`/jobs` API로 status/conclusion·스텝별 결과까지는 무인증으로 읽히므로, 실패 스텝을 특정한 뒤 **로컬에서 동일 명령을 clean으로 재현**하는 편이 로그보다 빠르고 확실했다.
+**worker**: orchestrator 단독(Actions API 진단·로컬 clean 재현·exec-bit 수정·push 후 run=success 확인). 워커 호출 없음.
+
+## [2026-09-15] [interop-jedis-smoke]
+**교훈**: 직접 짠 소켓 하니스가 통과해도 **제3자 클라이언트 상호운용은 별도 검증**이다 — 실 클라이언트는 접속 직후 부트스트랩 명령(Jedis: `CLIENT SETINFO`, Lettuce: `HELLO`)을 보내기 때문이다. redis4j는 이 명령들을 구현 안 했지만 **"미지 명령에 -ERR을 주되 연결은 유지"** 설계 덕에 Jedis 기본(RESP2, HELLO 미전송) 접속이 shim 없이 그대로 통과했다(CLIENT SETINFO는 Jedis가 best-effort로 -ERR 무시). 핸드셰이크 위험은 **RESP3를 기본으로 HELLO를 먼저 보내는 Lettuce 쪽**에 있고, Jedis는 안전지대다 — 상호운용 스모크의 첫 클라이언트로 Jedis가 합리적. 검증은 실행 바이너리가 필요한 redis-cli보다 **Gradle testImplementation 라이브러리(JUnit화)**가 CI 자동커버·재현성에서 우월했다(외부 프로세스·apt 설치 불요).
+**worker**: orchestrator 단독(범위 확정 문답·Jedis 7종 스모크 작성·clean build 74 그린 확인). 워커 호출 없음.

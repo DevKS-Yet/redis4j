@@ -20,6 +20,7 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("redis.clients:jedis:5.1.0")     // 실 클라이언트 상호운용 스모크(REQ-CORE-NFR-02 ②)
 }
 
 application {
