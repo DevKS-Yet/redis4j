@@ -47,9 +47,8 @@ write_scope: redis4j/**, .github/workflows/**
 - 리포트(로컬 생성, git 미추적): redis4j/build/reports/{tests,jacoco}
 
 ## 잔여(범위 밖·후속)
-- ~~검증기준② 표준 클라이언트(Jedis) 상호운용 스모크~~ ✅ 2026-09-15 충족: JedisInteropTest 7종
-  (핸드셰이크·String·List/Hash/Set/ZSet·TTL/멀티DB·MULTI/EXEC·WATCH취소·Pub/Sub·WRONGTYPE) 전부 그린.
-  Jedis 기본(RESP2) 접속이 shim 없이 통과 — "미지 명령에도 연결 유지" 설계가 CLIENT SETINFO를 흡수.
-  · 잔여: redis-cli 바이너리 상호운용은 로컬 미설치로 후속(원한다면 CI에 redis-tools 설치 스텝).
+- ~~검증기준② 실 클라이언트 상호운용 스모크~~ ✅ 2026-09-15 **완전 충족**(Jedis + redis-cli 둘 다):
+  · Jedis: JedisInteropTest 7종(핸드셰이크·String·List/Hash/Set/ZSet·TTL/멀티DB·MULTI/EXEC·WATCH취소·Pub/Sub·WRONGTYPE) 전부 그린. 기본 RESP2 접속이 shim 없이 통과 — "미지 명령에도 연결 유지" 설계가 CLIENT SETINFO를 흡수.
+  · redis-cli: CI 스텝(ubuntu redis-tools 설치→installDist 기동→PING/SET·GET/INCR/RPUSH·LRANGE/HSET·HGET/TYPE/WRONGTYPE) run=success(6a3a668, step "redis-cli interop smoke"=success).
 - ~~검증기준③ 실제 GitHub Actions 그린~~ ✅ 2026-09-14 충족: push 후 run=success 확인.
   (최초 런은 gradlew 실행비트 100644로 실패 → `git update-index --chmod=+x`(commit 6f9fa22)로 100755 승격 후 그린. 상세 log.md 참조.)
