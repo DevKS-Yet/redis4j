@@ -29,6 +29,36 @@ jobs:
       - name: Build & test (with coverage)
         run: ./gradlew --no-daemon build jacocoTestReport
 
+      - name: redis-cli interop smoke
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq redis-tools
+          ./gradlew --no-daemon installDist
+          ./build/install/redis4j/bin/redis4j 6390 &
+          SRV=$!
+          for i in $(seq 1 30); do
+            if [ "$(redis-cli -p 6390 ping 2>/dev/null)" = "PONG" ]; then break; fi
+            sleep 1
+          done
+          assert() {
+            if [ "$1" != "$2" ]; then echo "FAIL: expected [$2] got [$1]"; kill "$SRV" 2>/dev/null; exit 1; fi
+            echo "ok: $2"
+          }
+          assert "$(redis-cli -p 6390 ping)" "PONG"
+          assert "$(redis-cli -p 6390 set foo bar)" "OK"
+          assert "$(redis-cli -p 6390 get foo)" "bar"
+          assert "$(redis-cli -p 6390 incr counter)" "1"
+          assert "$(redis-cli -p 6390 incr counter)" "2"
+          assert "$(redis-cli -p 6390 rpush mylist a b c)" "3"
+          assert "$(redis-cli -p 6390 lrange mylist 0 -1 | paste -sd, -)" "a,b,c"
+          assert "$(redis-cli -p 6390 hset h field val)" "1"
+          assert "$(redis-cli -p 6390 hget h field)" "val"
+          assert "$(redis-cli -p 6390 type foo)" "string"
+          ERR="$(redis-cli -p 6390 lpush foo x 2>&1 || true)"
+          echo "$ERR" | grep -q "WRONGTYPE" || { echo "FAIL: no WRONGTYPE in [$ERR]"; kill "$SRV" 2>/dev/null; exit 1; }
+          echo "ok: WRONGTYPE"
+          kill "$SRV" 2>/dev/null || true
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
